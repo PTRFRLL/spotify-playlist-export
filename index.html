@@ -1,0 +1,51 @@
+<!-- 
+	You can haz source, it's messy though.
+	All the Spotify logic runs client-side, in app.js
+ -->
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="author" content="@PTRFRLL">
+		<title>Spotify Playlists to JSON</title>
+		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+		<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
+		<link href="./css/styles.css" rel="stylesheet">
+	</head>
+	<body>
+		<div class="jumbotron">
+			<div class="container">
+				<h1>Export Spotify playlists</h1>
+				<p>This tool exports ALL of your playlists (public and private) and their tracks to a JSON file for safe keeping or for importing using <a href='https://dev.peterfiorella.com/spotifyplaylistimport/'>this tool.</a></p>
+				<p id="directions">To get started, authorize us to access your Spotify account (so we can read your playlists)</p>
+				<button id="authorize" class="btn btn-success"><i class="fa fa-spotify" aria-hidden="true"></i> Authorize on Spotify</button>
+				<a id="download" style="display: none;"></a>
+			</div>
+		</div>
+		<div class="container">
+			<div class="row">
+				<div class="col-sm-6 col-sm-offset-3" style="text-align: center;">
+					<h3 id="message"></h3>
+					<button style="display:none;" id="start" class="btn btn-primary"><i class="fa fa-cloud-download" aria-hidden="true"></i> Export playlist(s)</button>
+				</div>
+			</div>
+			<div class="row spacer">
+				<div class="col-sm-6 col-sm-offset-3">
+					<table id='tbl' class="table table-striped" style="display: none;">
+						
+					</table>
+				</div>
+			</div>
+		</div>
+		<footer class="footer">
+	      <div class="container">
+	        <p class="text-muted">Created by <a href='http://twitter.com/PTRFRLL'>Peter Fiorella</a> | Source on <a href='#'>GitHub</a></p>
+	      </div>
+	    </footer>
+		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+		<script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+		<script type="text/javascript" src="./js/underscore-min.js"></script>
+		<script type="text/javascript" src="./js/moment.js"></script>
+		<script type="text/javascript" src="./js/app.js"></script>
+	</body>
+</html>
