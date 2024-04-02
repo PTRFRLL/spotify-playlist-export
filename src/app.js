@@ -3,8 +3,11 @@
  * Thanks to https://github.com/plamere/MySavedTracks for example code
  */
 (function () {
+  "use strict";
   const playlistExport = {
-    accessToken: null,
+    clientId: "75f6c14b0b174008bcaa9171ae7526f5",
+    redirectUri: "https://dev.peterfiorella.com/spotifyexport/public/",
+    startTime: null,
     playlists: [],
     totalPlaylists: 0,
     nextPageUrl: null,
@@ -16,49 +19,56 @@
     },
     cacheDom: function () {
       this.$authorize = document.getElementById("authorize");
-      this.$message = document.getElementById("message");
       this.$start = document.getElementById("start");
       this.$dir = document.getElementById("directions");
-      this.$progress = document.getElementById("progress");
+      this.$progressWrapper = document.querySelector(".progress");
+      this.$progress = document.querySelector(".progress-bar");
+      this.$output = document.getElementById("output");
     },
     bindEvents: function () {
       this.$authorize.addEventListener("click", this.authorize.bind(this));
       this.$start.addEventListener("click", this.export.bind(this));
     },
-    export: function () {
-      const estimateTime = Math.ceil(
-        (this.totalPlaylists * this.delayInMs) / 1000 / 60
+    export: async function () {
+      const estimateTime = Math.ceil((this.totalPlaylists * this.delayInMs) / 1000 / 60);
+      this.startTime = new Date();
+      this.addToOutput(`Exporting your playlists to JSON... (est. ${estimateTime} minutes)`);
+      this.hide(this.$start);
+      this.playlists = await this.getPlaylists(this.nextPageUrl);
+      this.show(this.$progressWrapper);
+      const toExport = await this.getTracks(this.playlists);
+      this.addToOutput(
+        `Complete. Exported ${this.totalPlaylists} in ${Math.round((new Date() - this.startTime) / 1000)} seconds`
       );
-      this.message(
-        `Exporting your playlists to JSON... (eta ${estimateTime} minutes)`
-      );
-      this.$start.style.display = "none";
-      playlistExport.getPlaylists();
+      this.hide(this.$progressWrapper);
+      this.exportJSON(toExport);
+    },
+    handleAuthedUser: async function () {
+      this.hide(this.$authorize);
+      this.hide(this.$dir);
+      const user = await this.fetchCurrentUserProfile();
+      if (user) {
+        this.show(this.$start);
+        this.show(this.$output);
+        const playlists = await this.fetchPlaylists();
+        if (playlists) {
+          this.playlists = this.formatPlaylists(playlists.items);
+          this.nextPageUrl = playlists.next;
+          this.totalPlaylists = playlists.total;
+          this.addToOutput(`Found ${playlists.total} playlists for ${user.id}`);
+        }
+      } else {
+        this.addToOutput("Failed to load Spotify profile");
+        console.error("Trouble getting the user profile");
+      }
     },
     pageLoad: async function () {
       const args = this.parseArgs();
       if ("access_token" in args) {
-        accessToken = args["access_token"];
-        playlistExport.$authorize.style.display = "none";
-        playlistExport.$dir.style.display = "none";
-        const user = await this.fetchCurrentUserProfile();
-        if (user) {
-          playlistExport.$start.style.display = "inline-block";
-          const playlists = await playlistExport.fetchPlaylists();
-          if (playlists) {
-            playlistExport.playlists = this.formatPlaylists(playlists.items);
-            this.nextPageUrl = playlists.next;
-            console.log(this.playlists);
-            this.totalPlaylists = playlists.total;
-            playlistExport.message(
-              "Found " + playlists.total + " playlists for " + user.id
-            );
-          }
-        } else {
-          console.error("Trouble getting the user profile");
-        }
+        this.accessToken = args["access_token"];
+        this.handleAuthedUser();
       } else {
-        this.$authorize.style.display = "inline-block";
+        this.show(this.$authorize);
       }
     },
     formatPlaylists: function (playlists) {
@@ -67,27 +77,21 @@
           name: playlist.name,
           public: playlist.public,
           collaborative: playlist.collaborative,
+          trackCount: playlist.tracks.total,
           tracks: playlist.tracks.href,
         };
       });
     },
-    message: function (text) {
-      this.$message.textContent = text;
-    },
     authorize: function () {
-      const client_id = "75f6c14b0b174008bcaa9171ae7526f5";
-      // const redirect_uri =
-      //   "https://dev.peterfiorella.com/spotifyexport/public/";
-      const redirect_uri = "http://localhost:3000";
       const scopes = "user-library-read playlist-read-private";
       const url =
         "https://accounts.spotify.com/authorize?client_id=" +
-        client_id +
+        this.clientId +
         "&response_type=token" +
         "&scope=" +
         encodeURIComponent(scopes) +
         "&redirect_uri=" +
-        encodeURIComponent(redirect_uri);
+        encodeURIComponent(this.redirectUri);
       document.location = url;
     },
     parseArgs: function () {
@@ -113,13 +117,14 @@
     callSpotify: async function (url) {
       const res = await fetch(url, {
         headers: {
-          Authorization: "Bearer " + accessToken,
+          Authorization: "Bearer " + this.accessToken,
         },
       });
       if (!res.ok) {
         if (res.status === 429) {
-          // throw new Error("Rate limit exceeded");
-          this.message("Rate limit exceeded. Please wait and try again later.");
+          this.addToOutput(`❌ Rate limit exceeded. Please wait and try again later.`);
+        } else if (res.status === 401) {
+          window.location.href = this.redirectUri;
         }
       }
       return res.json();
@@ -127,37 +132,42 @@
     delay: function (ms) {
       return new Promise((resolve) => setTimeout(resolve, ms));
     },
+    addToOutput: function (message) {
+      const newMessageElement = document.createElement("p");
+      newMessageElement.textContent = message;
+      newMessageElement.className = "mb-2 pb-2";
+      newMessageElement.style.borderBottom = "1px solid #ccc";
+      this.$output.appendChild(newMessageElement);
+
+      this.$output.scrollTop = this.$output.scrollHeight;
+    },
     setProgress: function (value) {
-      const percent = (value / this.totalPlaylists) * 100;
-      this.$progress.value = percent;
+      const percent = Math.round((value / this.totalPlaylists) * 100) + "%";
+      this.$progress.style.width = percent;
+      this.$progress.textContent = `${value} / ${this.totalPlaylists}`;
     },
     fetchPaginatedData: async function (url, data = []) {
       try {
         const response = await this.callSpotify(url);
         data = data.concat(response.items);
 
-        if (response.next) {
-          return await this.fetchPaginatedData(response.next, data);
-        } else {
-          return data;
-        }
+        return data;
       } catch (e) {
         console.error(e);
       }
     },
-    getPlaylists: async function () {
-      const playlistsFromAPI = await this.fetchPaginatedData(this.nextPageUrl);
+    getPlaylists: async function (url) {
+      const playlistsFromAPI = await this.fetchPaginatedData(url);
 
       const playlists = this.formatPlaylists(playlistsFromAPI);
 
-      this.playlists = this.playlists.concat(playlists);
-      console.info(`Finished fetching ${this.playlists.length} playlists`);
-      console.log(this.playlists);
-      this.$progress.style.display = "block";
-      console.info(`Fetching playlist tracks`);
-      await this.getTracks();
-      this.message("Done!");
-      this.exportJSON(this.playlists);
+      return this.playlists.concat(playlists);
+    },
+    show: function (element) {
+      element.style.display = "";
+    },
+    hide: function (element) {
+      element.style.display = "none";
     },
     formatTracks: function (tracks) {
       return tracks.map(({ track }) => {
@@ -173,24 +183,22 @@
         };
       });
     },
-    getTracks: async function () {
+    getTracks: async function (playlists) {
       const playlistsWithTracks = [];
-      for (let playlist of this.playlists) {
-        // Fetch tracks for the current playlist
+      for (let playlist of playlists) {
+        this.addToOutput(`${playlist.name} (${playlist.trackCount} tracks)`);
         const tracks = await this.fetchPaginatedData(playlist.tracks);
         playlist.tracks = this.formatTracks(tracks);
         playlistsWithTracks.push(playlist);
         this.setProgress(playlistsWithTracks.length);
-        // Delay the next request to avoid hitting the API rate limit
-        await this.delay(this.delayInMs); // Adjust delay time as required by the rate limit
-      }
 
-      this.playlists = playlistsWithTracks;
+        // Delay the next request to avoid hitting the API rate limit
+        await this.delay(this.delayInMs);
+      }
+      return playlistsWithTracks;
     },
     exportJSON: function (playlists) {
-      const jsoncontent =
-        "data:text/json;charset=utf-8," +
-        encodeURIComponent(JSON.stringify(playlists));
+      const jsoncontent = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(playlists));
       const dlAnchorElem = document.getElementById("download");
       dlAnchorElem.setAttribute("href", jsoncontent);
       const date = this.formatDate();
