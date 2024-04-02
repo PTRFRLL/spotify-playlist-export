@@ -7,6 +7,7 @@
   const playlistExport = {
     clientId: "75f6c14b0b174008bcaa9171ae7526f5",
     redirectUri: "https://dev.peterfiorella.com/spotifyexport/public/",
+    accessToken: null,
     startTime: null,
     playlists: [],
     totalPlaylists: 0,
@@ -38,7 +39,9 @@
       this.show(this.$progressWrapper);
       const toExport = await this.getTracks(this.playlists);
       this.addToOutput(
-        `Complete. Exported ${this.totalPlaylists} in ${Math.round((new Date() - this.startTime) / 1000)} seconds`
+        `Complete. Exported ${this.totalPlaylists} playlists in ${Math.round(
+          (new Date() - this.startTime) / 1000
+        )} seconds`
       );
       this.hide(this.$progressWrapper);
       this.exportJSON(toExport);
@@ -151,7 +154,11 @@
         const response = await this.callSpotify(url);
         data = data.concat(response.items);
 
-        return data;
+        if (response.next) {
+          return await this.fetchPaginatedData(response.next, data);
+        } else {
+          return data;
+        }
       } catch (e) {
         console.error(e);
       }
