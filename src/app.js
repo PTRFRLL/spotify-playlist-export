@@ -151,7 +151,11 @@
         const response = await this.callSpotify(url);
         data = data.concat(response.items);
 
-        return data;
+        if (response.next) {
+          return await this.fetchPaginatedData(response.next, data);
+        } else {
+          return data;
+        }
       } catch (e) {
         console.error(e);
       }
