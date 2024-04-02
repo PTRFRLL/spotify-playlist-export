@@ -6,7 +6,7 @@
   "use strict";
   const playlistExport = {
     clientId: "75f6c14b0b174008bcaa9171ae7526f5",
-    redirectUri: "https://dev.peterfiorella.com/spotifyexport/public/",
+    redirectUri: window.location.href,
     startTime: null,
     playlists: [],
     totalPlaylists: 0,
@@ -38,7 +38,9 @@
       this.show(this.$progressWrapper);
       const toExport = await this.getTracks(this.playlists);
       this.addToOutput(
-        `Complete. Exported ${this.totalPlaylists} in ${Math.round((new Date() - this.startTime) / 1000)} seconds`
+        `Complete. Exported ${this.totalPlaylists} playlists in ${Math.round(
+          (new Date() - this.startTime) / 1000
+        )} seconds`
       );
       this.hide(this.$progressWrapper);
       this.exportJSON(toExport);
