@@ -4,7 +4,7 @@
 
 ## Demo
 
-[Live Demo](https://dev.peterfiorella.com/spotifyexport/public/)
+[Live Demo](https://dev.peterfiorella.com/spotifyexport/)
 
 ## Running Locally
 
