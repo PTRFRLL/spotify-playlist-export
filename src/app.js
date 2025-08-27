@@ -30,9 +30,13 @@
       this.$start.addEventListener("click", this.export.bind(this));
     },
     export: async function () {
-      const estimateTime = Math.ceil((this.totalPlaylists * this.delayInMs) / 1000 / 60);
+      const estimateTime = Math.ceil(
+        (this.totalPlaylists * this.delayInMs) / 1000 / 60
+      );
       this.startTime = new Date();
-      this.addToOutput(`Exporting your playlists to JSON... (est. ${estimateTime} minutes)`);
+      this.addToOutput(
+        `Exporting your playlists to JSON... (est. ${estimateTime} minutes)`
+      );
       this.hide(this.$start);
       this.playlists = await this.getPlaylists(this.nextPageUrl);
       this.show(this.$progressWrapper);
@@ -124,7 +128,9 @@
       });
       if (!res.ok) {
         if (res.status === 429) {
-          this.addToOutput(`❌ Rate limit exceeded. Please wait and try again later.`);
+          this.addToOutput(
+            `❌ Rate limit exceeded. Please wait and try again later.`
+          );
         } else if (res.status === 401) {
           window.location.href = this.redirectUri;
         }
@@ -160,6 +166,7 @@
         }
       } catch (e) {
         console.error(e);
+        throw new Error(`Error fetching paginated data: ${e}`);
       }
     },
     getPlaylists: async function (url) {
@@ -192,19 +199,25 @@
     getTracks: async function (playlists) {
       const playlistsWithTracks = [];
       for (let playlist of playlists) {
-        this.addToOutput(`${playlist.name} (${playlist.trackCount} tracks)`);
-        const tracks = await this.fetchPaginatedData(playlist.tracks);
-        playlist.tracks = this.formatTracks(tracks);
-        playlistsWithTracks.push(playlist);
-        this.setProgress(playlistsWithTracks.length);
+        try {
+          const tracks = await this.fetchPaginatedData(playlist.tracks);
+          this.addToOutput(`${playlist.name} (${playlist.trackCount} tracks)`);
+          playlist.tracks = this.formatTracks(tracks);
+          playlistsWithTracks.push(playlist);
+          this.setProgress(playlistsWithTracks.length);
 
-        // Delay the next request to avoid hitting the API rate limit
-        await this.delay(this.delayInMs);
+          // Delay the next request to avoid hitting the API rate limit
+          await this.delay(this.delayInMs);
+        } catch (e) {
+          this.addToOutput(`❌ ${playlist.name} failed to export`);
+        }
       }
       return playlistsWithTracks;
     },
     exportJSON: function (playlists) {
-      const jsoncontent = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(playlists));
+      const jsoncontent =
+        "data:text/json;charset=utf-8," +
+        encodeURIComponent(JSON.stringify(playlists));
       const dlAnchorElem = document.getElementById("download");
       dlAnchorElem.setAttribute("href", jsoncontent);
       const date = this.formatDate();
